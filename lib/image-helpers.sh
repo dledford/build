@@ -109,7 +109,14 @@ check_loop_device()
 			display_alert "Creating device node" "$device"
 			mknod -m0660 "${device}" b "0x$(stat -c '%t' "/tmp/$device")" "0x$(stat -c '%T' "/tmp/$device")"
 		else
-			exit_with_error "Device node $device does not exist"
+			# Wait at most 10 seconds for the udev queue to
+			# settle.  However, there might be requests for
+			# other devices in the queue, so exit immediately
+			# if our device appears
+			udevadm settle -t 10 -E $device
+			if [[ ! -b $device ]]; then
+				exit_with_error "Device node $device does not exist"
+			fi
 		fi
 	fi
 
